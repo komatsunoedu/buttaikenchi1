@@ -1,51 +1,65 @@
-// ml5.js: Object Detection with COCO-SSD (Webcam)
-// The Coding Train / Daniel Shiffman
-// https://thecodingtrain.com/learning/ml5/1.3-object-detection.html
-// https://youtu.be/QEzRxnuaZCk
-
-// p5.js Web Editor - Image: https://editor.p5js.org/codingtrain/sketches/ZNQQx2n5o
-// p5.js Web Editor - Webcam: https://editor.p5js.org/codingtrain/sketches/VIYRpcME3
-// p5.js Web Editor - Webcam Persistence: https://editor.p5js.org/codingtrain/sketches/Vt9xeTxWJ
-
-// let img;
 let video;
-let detector;
-let detections = [];
-
-function preload() {
-  // img = loadImage('dog_cat.jpg');
-  detector = ml5.objectDetector('cocossd');
-}
-
-function gotDetections(error, results) {
-  if (error) {
-    console.error(error);
-  }
-  detections = results;
-  detector.detect(video, gotDetections);
-}
+let yolo;
+let status;
+let objects = [];
 
 function setup() {
-  createCanvas(640, 480);
-  video = createCapture(VIDEO);
-  video.size(640, 480);
-  video.hide();
-  detector.detect(video, gotDetections);
+    // ドキュメント内にcanvas要素を作成し、サイズをピクセル単位で設定する。
+    // https://p5js.org/reference/#/p5/createCanvas
+    createCanvas(320, 240);
+    // Webカメラからのオーディオ/ビデオを含む新しいHTML5 video要素を作成する
+    // https://p5js.org/reference/#/p5/createCapture
+    video = createCapture(VIDEO);
+    // ビデオのサイズはキャンバスと同じ
+    video.size(320, 240);
+
+    // YOLOオブジェクトを作成する
+    yolo = ml5.YOLO(video, startDetecting);
+
+    // 元のビデオは隠す
+    video.hide();
+    status = select('#status');
 }
 
-
+// 毎フレーム、p5.jsによって呼び出される。
 function draw() {
-  image(video, 0, 0);
+    // イメージをp5.jsのcanvasに描画する。
+    // image(img, x, y, [width], [height])
+    // https://p5js.org/reference/#/p5/image
 
-  for (let i = 0; i < detections.length; i++) {
-    let object = detections[i];
-    stroke(0, 255, 0);
-    strokeWeight(4);
-    noFill();
-    rect(object.x, object.y, object.width, object.height);
-    noStroke();
-    fill(255);
-    textSize(24);
-    text(object.label, object.x + 10, object.y + 24);
-  }
+    // width: 描画するキャンバスの幅を保持するシステム変数。heightも同様
+    image(video, 0, 0, width, height);
+
+    for (let i = 0; i < objects.length; i++) {
+        noStroke();
+        fill(0, 255, 0);
+        // クラス名を境界ボックス左上に描く
+        // 画面にテキストを描画する。最初のパラメータで指定された情報を、以降の追加パラメータで指定された位置の画面に表示する。
+        // text(str, x, y, [x2], [y2])
+        // https://p5js.org/reference/#/p5/text
+        text(objects[i].className, objects[i].x * width, objects[i].y * height - 5);
+        noFill();
+        strokeWeight(4);
+        stroke(0, 255, 0);
+        // 境界ボックスを描く
+        // 矩形を画面に描画する。
+        // rect(x, y, w, h, [tl], [tr], [br], [bl])
+        // https://p5js.org/reference/#/p5/rect
+        rect(objects[i].x * width, objects[i].y * height, objects[i].w * width, objects[i].h * height);
+    }
+}
+
+function startDetecting() {
+    status.html('モデルを読み込んだ');
+    detect();
+}
+
+// ビデオからのイメージを物体検出する
+function detect() {
+    yolo.detect(function(err, results) {
+        // 結果を配列objectsに割り当てる
+        objects = results;
+        // 連続して検出
+        detect();
+    });
 }
